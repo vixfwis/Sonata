@@ -1,0 +1,7 @@
+/target
+/.idea
+*~
+*.d
+*.o
+iso
+sonata.iso
