@@ -24,7 +24,7 @@ sonata_os:
 	cargo -Z unstable-options build --lib --out-dir kernel
 
 qemu: $(ISO_FILE)
-	qemu-system-x86_64 -cdrom $(ISO_FILE) -m 1024M
+	qemu-system-x86_64 -cdrom $(ISO_FILE) -m 1024M -s
 
 clean:
 	make -C kernel clean
