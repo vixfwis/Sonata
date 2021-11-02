@@ -1,10 +1,16 @@
-use core::fmt::{Debug, Formatter};
+use core::fmt::{Debug};
 use core::marker::PhantomData;
-use x86::io::{inb, outb};
+use x86::io::{outb};
 use x86::segmentation;
+use crate::memory::VirtualAddress;
 
 const GATE_TYPE_INTERRUPT: u8 = 0xE;
 const GATE_TYPE_TRAP: u8 = 0xF;
+
+const PIC1_CMD: u16 = 0x20;
+const PIC1_DATA: u16 = 0x21;
+const PIC2_CMD: u16 = 0xA0;
+const PIC2_DATA: u16 = 0xA1;
 
 #[repr(u8)]
 pub enum InterruptGateType {
@@ -15,24 +21,18 @@ pub enum InterruptGateType {
 #[derive(Debug)]
 #[repr(C)]
 pub struct InterruptStackFrame {
-    rip: u64,
+    rip: VirtualAddress,
     cs: u64,
     flags: u64,
-    rsp: u64,
+    rsp: VirtualAddress,
     ss: u64,
-}
-
-impl Debug for InterruptStackFrame {
-    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
-        todo!()
-    }
 }
 
 pub type IntHandler = extern "x86-interrupt" fn(frame: InterruptStackFrame);
 pub type IntHandlerWithErrCode = extern "x86-interrupt" fn(frame: InterruptStackFrame, err_code: u64);
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-#[repr(packed)]
+#[repr(C)]
 pub struct IDTEntryOptions {
     ist: u8,
     type_attr: u8
@@ -93,7 +93,7 @@ impl IDTEntryOptions {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-#[repr(packed)]
+#[repr(C)]
 pub struct IDTEntry<F> {
     offset_1: u16,
     selector: u16,
@@ -122,7 +122,7 @@ impl<F> IDTEntry<F> {
         self.offset_1 = address as u16;
         self.offset_2 = (address >> 16) as u16;
         self.offset_3 = (address >> 32) as u32;
-        self.selector = 8;
+        self.selector = segmentation::cs().bits();
         self.options.set_present(true);
     }
 }
@@ -239,14 +239,17 @@ impl InterruptDescriptorTable {
     }
 }
 
+pub fn without_interrupts<F>(func: F)
+where F: Fn() {
+    unsafe {
+        x86::irq::disable();
+        func();
+        x86::irq::enable();
+    }
+}
+
 // https://wiki.osdev.org/PIC
 // remapped to start at 0x20
-
-const PIC1_CMD: u16 = 0x20;
-const PIC1_DATA: u16 = 0x21;
-const PIC2_CMD: u16 = 0xA0;
-const PIC2_DATA: u16 = 0xA1;
-
 pub fn remap_pic() {
     unsafe {
         // initialization mode: expects 3 writes
@@ -269,21 +272,6 @@ pub fn remap_pic() {
     }
 }
 
-pub fn set_pic_irq_line(irq_line: u8) {
-    let mut value = irq_line;
-    let port = match value < 8 {
-        true => PIC1_DATA,
-        false => {
-            value -= 8;
-            PIC2_DATA
-        }
-    };
-    unsafe {
-        value = inb(port) | (1 << value);
-        outb(port, value);
-    }
-}
-
 pub fn set_pic1_mask(mask: u8) {
     unsafe {
         outb(PIC1_DATA, mask);
@@ -293,5 +281,17 @@ pub fn set_pic1_mask(mask: u8) {
 pub fn set_pic2_mask(mask: u8) {
     unsafe {
         outb(PIC2_DATA, mask);
+    }
+}
+
+pub fn pic1_end_of_intr() {
+    unsafe {
+        outb(PIC1_CMD, 0x20);
+    }
+}
+
+pub fn pic2_end_of_intr() {
+    unsafe {
+        outb(PIC2_CMD, 0x20);
     }
 }

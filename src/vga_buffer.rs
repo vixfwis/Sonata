@@ -1,6 +1,7 @@
 use core::fmt::Write;
 use spin::Mutex;
 use lazy_static::lazy_static;
+use crate::interrupts::without_interrupts;
 
 lazy_static! {
     pub static ref WRITER: Mutex<VGAWriter> = Mutex::new(VGAWriter::new(
@@ -12,7 +13,6 @@ lazy_static! {
 const SCREEN_WIDTH: usize = 80;
 const SCREEN_HEIGHT: usize = 25;
 
-#[allow(dead_code)]
 #[repr(u8)]
 pub enum VGAColor {
     Black = 0x0,
@@ -43,6 +43,7 @@ impl VGAColorCode {
 }
 
 #[repr(C)]
+#[derive(Clone, Copy)]
 struct VGAChar {
     char: u8,
     color: VGAColorCode
@@ -86,6 +87,14 @@ impl VGAWriter {
     pub fn newline(&mut self) {
         self.offset -= self.offset % SCREEN_WIDTH;
         self.offset += SCREEN_WIDTH;
+        if self.offset == SCREEN_WIDTH * SCREEN_HEIGHT {
+            self.offset -= SCREEN_WIDTH;
+            self.buf.chars.copy_within(SCREEN_WIDTH..(SCREEN_WIDTH * SCREEN_HEIGHT), 0);
+            let space = VGAChar { char: 0x20, color: self.color };
+            for e in &mut self.buf.chars[SCREEN_WIDTH*(SCREEN_HEIGHT-1)..SCREEN_WIDTH*SCREEN_HEIGHT] {
+                *e = space;
+            }
+        }
     }
 }
 
@@ -109,5 +118,7 @@ macro_rules! println {
 
 #[doc(hidden)]
 pub fn _print(args: core::fmt::Arguments) {
-    WRITER.lock().write_fmt(args).unwrap();
+    without_interrupts(|| {
+        WRITER.lock().write_fmt(args).unwrap();
+    });
 }
