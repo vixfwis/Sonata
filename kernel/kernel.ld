@@ -3,7 +3,7 @@ ENTRY(_start)
 SECTIONS
 {
   . = 4M;
-  _kernel_physical_start = .;
+  kernel_physical_start = .;
 
   .boottext :
     {
@@ -25,11 +25,11 @@ SECTIONS
     }
 
   . = ALIGN(0x1000);
-  _boot_end = .;
+  boot_end = .;
 
   . += 0xFFFFFFFF80000000;
-  _kernel_virtual_start = .;
-  .text : AT(_boot_end)
+  kernel_virtual_start = .;
+  .text : AT(boot_end)
   {
     *(.multiboot)
     *(.text)
@@ -57,7 +57,7 @@ SECTIONS
     *(.bss)
   }
 
-  _kernel_virtual_end = .;
+  kernel_virtual_end = .;
 
-  _kernel_physical_end = (LOADADDR (.bss) + SIZEOF (.bss) + 0xFFF) & 0xFFFFFFFFFFFFF000;
+  kernel_physical_end = (LOADADDR (.bss) + SIZEOF (.bss) + 0xFFF) & 0xFFFFFFFFFFFFF000;
 }

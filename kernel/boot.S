@@ -14,9 +14,17 @@ header_start:
     .long HEADER_LENGTH
     .long CHECKSUM
     // multiboot tags
+
+    .short MULTIBOOT_HEADER_TAG_INFORMATION_REQUEST // request info from bootloader
+    .short 0                                        // non-optional
+    .long 12                                        // tag size
+    .long MULTIBOOT_TAG_TYPE_MMAP                   // memory map
+    .long 0                                         // padding to next 8 byte boundary
+
+    // end of flags array
     .short MULTIBOOT_HEADER_TAG_END
-    .short 0    // flags, none set
-    .long 8     // size, including itself (short + short + long)
+    .short 0
+    .long 8
 header_end:
 
 .code32
@@ -27,7 +35,7 @@ header_end:
 .comm high_pdpt, PDPT_SIZE, PDPT_ALIGNMENT
 .comm low_page_directory_table, PAGE_DIRECTORY_SIZE, PAGE_DIRECTORY_ALIGNMENT
 .comm high_page_directory_table, PAGE_DIRECTORY_SIZE, PAGE_DIRECTORY_ALIGNMENT
-.comm tmp_stack, KERNEL_BOOT_STACK_SIZE, KERNEL_BOOT_STACK_ALIGNMENT
+.comm kstack, KERNEL_BOOT_STACK_SIZE, KERNEL_BOOT_STACK_ALIGNMENT
 
 .data
 .align GDT_TABLE_ALIGNMENT
@@ -42,11 +50,21 @@ gdt_ptr:
          .short GDT_TABLE_SIZE - 1
          .long gdt_table
 
+boot_info:
+        .quad 0  // mb2 boot info address
+        .quad kstack
+        .quad kstack + KERNEL_BOOT_STACK_SIZE
+        .quad kernel_physical_start
+        .quad kernel_physical_end
+        .quad kernel_virtual_start
+        .quad kernel_virtual_end
+
 .section .text
 .global _start
 .type _start, @function
 _start:
-        movl $tmp_stack + KERNEL_BOOT_STACK_SIZE, %esp
+        movl %ebx, boot_info  // mb2 boot info address
+        movl $kstack + KERNEL_BOOT_STACK_SIZE, %esp
 
         movl $low_pdpt, %eax
         or $(MMU_PRESENT | MMU_WRITABLE), %eax
@@ -66,7 +84,7 @@ _start:
 
         mov $0, %ecx
 
-        movl $_kernel_physical_end, %esi
+        movl $kernel_physical_end, %esi
         shrl $TWO_MEGABYTES_SHIFT, %esi
         addl $1, %esi
 
@@ -79,7 +97,7 @@ page_directory_table_loop:
 
         inc %ecx
         cmp %esi, %ecx
-        jne page_directory_table_loop  // if not equal redo loop
+        jne page_directory_table_loop
 
         movl $pml4, %eax
         movl %eax, %cr3
@@ -98,10 +116,6 @@ page_directory_table_loop:
         lgdt gdt_ptr
 
         ljmp $(KERNEL_GDT_ENTRY * GDT_ENTRY_SIZE), $_start64
-
-        cli
-        hlt
-
 .code64
 
 .global _start64
@@ -113,8 +127,11 @@ _start64:
         movw %ax, %fs
         movw %ax, %gs
         movw %ax, %ss
+        // clear screen
         movl $0xB8000, %edi
         movq $0x0F200F200F200F20, %rax
         movl $500, %ecx
         rep stosq
+        // pass boot info
+        movq $boot_info, %rdi
         jmp kmain

@@ -1,8 +1,7 @@
 use core::fmt::{Debug};
 use core::marker::PhantomData;
-use x86::io::{outb};
+use x86::io::{inb, outb};
 use x86::segmentation;
-use crate::memory::VirtualAddress;
 
 const GATE_TYPE_INTERRUPT: u8 = 0xE;
 const GATE_TYPE_TRAP: u8 = 0xF;
@@ -21,15 +20,16 @@ pub enum InterruptGateType {
 #[derive(Debug)]
 #[repr(C)]
 pub struct InterruptStackFrame {
-    rip: VirtualAddress,
-    cs: u64,
-    flags: u64,
-    rsp: VirtualAddress,
-    ss: u64,
+    pub rip: *const u8,
+    pub cs: u64,
+    pub flags: u64,
+    pub rsp: *const u8,
+    pub ss: u64,
 }
 
 pub type IntHandler = extern "x86-interrupt" fn(frame: InterruptStackFrame);
 pub type IntHandlerWithErrCode = extern "x86-interrupt" fn(frame: InterruptStackFrame, err_code: u64);
+pub type IntHandlerDvrgWithErrCode = extern "x86-interrupt" fn(frame: InterruptStackFrame, err_code: u64) -> !;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[repr(C)]
@@ -139,6 +139,12 @@ impl IDTEntry<IntHandlerWithErrCode> {
     }
 }
 
+impl IDTEntry<IntHandlerDvrgWithErrCode> {
+    pub fn set_handler(&mut self, handler: IntHandlerDvrgWithErrCode) {
+        self.set_handler_address(handler as u64);
+    }
+}
+
 #[repr(C)]
 pub struct InterruptDescriptorTable {
     // exceptions
@@ -150,7 +156,7 @@ pub struct InterruptDescriptorTable {
     pub bound_range_exceeded: IDTEntry<IntHandler>,
     pub invalid_opcode: IDTEntry<IntHandler>,
     pub device_not_available: IDTEntry<IntHandler>,
-    pub double_fault: IDTEntry<IntHandlerWithErrCode>,
+    pub double_fault: IDTEntry<IntHandlerDvrgWithErrCode>,
     reserved_exceptions_9: IDTEntry<IntHandler>,
     pub invalid_tss: IDTEntry<IntHandlerWithErrCode>,
     pub segment_not_present: IDTEntry<IntHandlerWithErrCode>,
@@ -239,8 +245,35 @@ impl InterruptDescriptorTable {
     }
 }
 
+#[derive(Debug)]
+pub struct PageFaultInfo {
+    present: bool,
+    write: bool,
+    user: bool,
+    reserved_write: bool,
+    instr_fetch: bool,
+    protection: bool,
+    shadow_stack: bool,
+    software_guard_ext: bool,
+}
+
+impl PageFaultInfo {
+    pub fn from_err_code(code: u64) -> Self {
+        PageFaultInfo {
+            present: code & (1 << 0) > 0,
+            write: code & (1 << 1) > 0,
+            user: code & (1 << 2) > 0,
+            reserved_write: code & (1 << 3) > 0,
+            instr_fetch: code & (1 << 4) > 0,
+            protection: code & (1 << 5) > 0,
+            shadow_stack: code & (1 << 6) > 0,
+            software_guard_ext: code & (1 << 15) > 0,
+        }
+    }
+}
+
 pub fn without_interrupts<F>(func: F)
-where F: Fn() {
+    where F: Fn() {
     unsafe {
         x86::irq::disable();
         func();
@@ -269,6 +302,36 @@ pub fn remap_pic() {
         // restore mask
         outb(PIC1_DATA, 0);
         outb(PIC2_DATA, 0);
+    }
+}
+
+pub fn set_pic_irq_line(irq_line: u8) {
+    let mut value = irq_line;
+    let port = match value < 8 {
+        true => PIC1_DATA,
+        false => {
+            value -= 8;
+            PIC2_DATA
+        }
+    };
+    unsafe {
+        value = inb(port) | (1 << value);
+        outb(port, value);
+    }
+}
+
+pub fn clear_pic_iqr_line(irq_line: u8) {
+    let mut value = irq_line;
+    let port = match value < 8 {
+        true => PIC1_DATA,
+        false => {
+            value -= 8;
+            PIC2_DATA
+        }
+    };
+    unsafe {
+        value = inb(port) & !(1 << value);
+        outb(port, value);
     }
 }
 
