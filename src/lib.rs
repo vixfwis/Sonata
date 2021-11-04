@@ -8,7 +8,7 @@ mod vga_buffer;
 mod interrupts;
 mod memory;
 
-use core::fmt::{Arguments, Debug, Formatter};
+use core::fmt::{Debug};
 use core::panic::PanicInfo;
 use x86::halt;
 use x86::irq;
@@ -49,8 +49,6 @@ extern "x86-interrupt" fn page_fault(frame: InterruptStackFrame, err_code: u64) 
 #[repr(C)]
 pub struct BootInfo {
     mb2_boot_info: VirtAddress,
-    kernel_stack_start: VirtAddress,
-    kernel_stack_end: VirtAddress,
     kernel_phys_start: VirtAddress,
     kernel_phys_end: VirtAddress,
     kernel_virt_start: VirtAddress,

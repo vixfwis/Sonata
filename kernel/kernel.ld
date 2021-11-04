@@ -3,7 +3,6 @@ ENTRY(_start)
 SECTIONS
 {
   . = 4M;
-  kernel_physical_start = .;
 
   .boottext :
     {
@@ -28,7 +27,6 @@ SECTIONS
   boot_end = .;
 
   . += 0xFFFFFFFF80000000;
-  kernel_virtual_start = .;
   .text : AT(boot_end)
   {
     *(.multiboot)
@@ -57,7 +55,9 @@ SECTIONS
     *(.bss)
   }
 
+  . = ALIGN(0x1000);
+
   kernel_virtual_end = .;
 
-  kernel_physical_end = (LOADADDR (.bss) + SIZEOF (.bss) + 0xFFF) & 0xFFFFFFFFFFFFF000;
+  kernel_physical_end = kernel_virtual_end & (~0xFFFFFFFF80000000);
 }

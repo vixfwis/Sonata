@@ -50,13 +50,15 @@ gdt_ptr:
          .short GDT_TABLE_SIZE - 1
          .long gdt_table
 
+// pass this structure to kmain so memory manager
+// can take over without overwriting itself
 boot_info:
-        .quad 0  // mb2 boot info address
+        // write multiboot2 boot info at runtime
+        .quad 0
+        // stack must be linked right before x64 .text, see kernel.ld
         .quad kstack
-        .quad kstack + KERNEL_BOOT_STACK_SIZE
-        .quad kernel_physical_start
         .quad kernel_physical_end
-        .quad kernel_virtual_start
+        .quad kstack + KERNEL_HIGHER_HALF
         .quad kernel_virtual_end
 
 .section .text
@@ -64,16 +66,18 @@ boot_info:
 .type _start, @function
 _start:
         movl %ebx, boot_info  // mb2 boot info address
-        movl $kstack + KERNEL_BOOT_STACK_SIZE, %esp
 
+        // write lower half entry to level 4 page table
         movl $low_pdpt, %eax
         or $(MMU_PRESENT | MMU_WRITABLE), %eax
         movl %eax, pml4 + (PML4_ADDR_TO_ENTRY_INDEX(KERNEL_PHYSICAL_START) * PML4_ENTRY_SIZE)
 
+        // write higher half entry to level 4 page table
         movl $high_pdpt, %eax
         or $(MMU_PRESENT | MMU_WRITABLE), %eax
         movl %eax, pml4 + (PML4_ADDR_TO_ENTRY_INDEX(KERNEL_VIRTUAL_START) * PML4_ENTRY_SIZE)
 
+        // same with level 3
         movl $low_page_directory_table, %eax
         or $(MMU_PRESENT | MMU_WRITABLE), %eax
         movl %eax, low_pdpt + (PDPT_ADDR_TO_ENTRY_INDEX(KERNEL_PHYSICAL_START) * PDPT_ENTRY_SIZE)
@@ -82,8 +86,11 @@ _start:
         or $(MMU_PRESENT | MMU_WRITABLE), %eax
         movl %eax, high_pdpt + (PDPT_ADDR_TO_ENTRY_INDEX(KERNEL_VIRTUAL_START) * PDPT_ENTRY_SIZE)
 
+        // i.e:
+        // end = 0x4DF000
+        // end / 2Mb + 1 = 3 pages
+        // identity mapping 3 pages, 2MiB each, from 0 to 0x600000
         mov $0, %ecx
-
         movl $kernel_physical_end, %esi
         shrl $TWO_MEGABYTES_SHIFT, %esi
         addl $1, %esi
@@ -99,25 +106,29 @@ page_directory_table_loop:
         cmp %esi, %ecx
         jne page_directory_table_loop
 
+        // load top level page table to CR3
         movl $pml4, %eax
         movl %eax, %cr3
 
+        // enable PAE
         movl $KERNEL_CR4, %eax
         movl %eax, %cr4
 
+        // write Long Mode Enable (LME) to MSR
         movl $MSR_EFER, %ecx
         rdmsr
         or $MSR_EFER_LME, %eax
         wrmsr
 
+        // set protected mode bit, paging bit, math coprocessor bit
         movl $KERNEL_CR0, %eax
         movl %eax, %cr0
 
+        // load GDT and long jump to x64
         lgdt gdt_ptr
-
         ljmp $(KERNEL_GDT_ENTRY * GDT_ENTRY_SIZE), $_start64
-.code64
 
+.code64
 .global _start64
 .type _start64, @function
 _start64:
@@ -127,6 +138,10 @@ _start64:
         movw %ax, %fs
         movw %ax, %gs
         movw %ax, %ss
+        // set up stack
+        movq $kstack + KERNEL_BOOT_STACK_SIZE, %rax
+        or $KERNEL_HIGHER_HALF, %rax
+        movq %rax, %rsp
         // clear screen
         movl $0xB8000, %edi
         movq $0x0F200F200F200F20, %rax

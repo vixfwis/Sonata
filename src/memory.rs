@@ -1,5 +1,4 @@
 use core::fmt::{Debug, Formatter};
-use core::ops::Deref;
 
 #[derive(Copy, Clone, PartialEq)]
 #[repr(transparent)]
