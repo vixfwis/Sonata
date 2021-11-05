@@ -91,6 +91,8 @@ _start:
         // end / 2Mb + 1 = 3 pages
         // identity mapping 3 pages, 2MiB each, from 0 to 0x600000
         mov $0, %ecx
+        // todo: multiboot2 boot info might not be mapped
+        // if it's on page boundary or if bootloader puts it not right after kernel
         movl $kernel_physical_end, %esi
         shrl $TWO_MEGABYTES_SHIFT, %esi
         addl $1, %esi
@@ -131,6 +133,7 @@ page_directory_table_loop:
 .code64
 .global _start64
 .type _start64, @function
+
 _start64:
         movw $0, %ax
         movw %ax, %ds
@@ -138,9 +141,13 @@ _start64:
         movw %ax, %fs
         movw %ax, %gs
         movw %ax, %ss
-        // set up stack
-        movq $kstack + KERNEL_BOOT_STACK_SIZE, %rax
-        or $KERNEL_HIGHER_HALF, %rax
+        // setting up stack in higher half address space via mov
+        // because `add` doesn't have r/m64 opcode
+        movq $KERNEL_HIGHER_HALF, %rax
+        movq %rax, kstack
+        movl $kstack + KERNEL_BOOT_STACK_SIZE, %eax
+        movl %eax, kstack
+        movabs kstack, %rax
         movq %rax, %rsp
         // clear screen
         movl $0xB8000, %edi
@@ -149,4 +156,5 @@ _start64:
         rep stosq
         // pass boot info
         movq $boot_info, %rdi
-        jmp kmain
+        movabs $kmain, %rax
+        jmp *%rax

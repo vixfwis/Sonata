@@ -20,10 +20,10 @@ pub enum InterruptGateType {
 #[derive(Debug)]
 #[repr(C)]
 pub struct InterruptStackFrame {
-    pub rip: *const u8,
+    pub rip: *const (),
     pub cs: u64,
     pub flags: u64,
-    pub rsp: *const u8,
+    pub rsp: *const (),
     pub ss: u64,
 }
 

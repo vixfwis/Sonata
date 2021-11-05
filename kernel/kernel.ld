@@ -26,7 +26,7 @@ SECTIONS
   . = ALIGN(0x1000);
   boot_end = .;
 
-  . += 0xFFFFFFFF80000000;
+  . += 0xFFFF800000000000;
   .text : AT(boot_end)
   {
     *(.multiboot)
@@ -59,5 +59,5 @@ SECTIONS
 
   kernel_virtual_end = .;
 
-  kernel_physical_end = kernel_virtual_end & (~0xFFFFFFFF80000000);
+  kernel_physical_end = kernel_virtual_end & (~0xFFFF800000000000);
 }

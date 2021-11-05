@@ -8,15 +8,17 @@ mod vga_buffer;
 mod interrupts;
 mod memory;
 
-use core::fmt::{Debug};
+use core::fmt::Debug;
 use core::panic::PanicInfo;
 use x86::halt;
 use x86::irq;
 use x86::io::{inb, outb};
 use x86::dtables;
-use crate::interrupts::{InterruptDescriptorTable, remap_pic, set_pic1_mask, InterruptStackFrame, pic1_end_of_intr, PageFaultInfo};
+use crate::interrupts::{InterruptDescriptorTable, InterruptStackFrame, PageFaultInfo, pic1_end_of_intr, remap_pic, set_pic1_mask};
 use multiboot2;
-use crate::memory::VirtAddress;
+use x86::current::paging::{PAddr, VAddr};
+use memory::BootInfo;
+use crate::memory::paging::MemoryManager;
 
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
@@ -41,18 +43,8 @@ extern "x86-interrupt" fn double_fault(frame: InterruptStackFrame, _err_code: u6
 
 extern "x86-interrupt" fn page_fault(frame: InterruptStackFrame, err_code: u64) {
     let info = PageFaultInfo::from_err_code(err_code);
-    let pf_addr = unsafe { x86::controlregs::cr2() } as *const u8;
+    let pf_addr = unsafe { x86::controlregs::cr2() } as *const ();
     panic!("page fault at {:p}, accessing {:p}: {:?}", frame.rip, pf_addr, info);
-}
-
-#[derive(Debug)]
-#[repr(C)]
-pub struct BootInfo {
-    mb2_boot_info: VirtAddress,
-    kernel_phys_start: VirtAddress,
-    kernel_phys_end: VirtAddress,
-    kernel_virt_start: VirtAddress,
-    kernel_virt_end: VirtAddress,
 }
 
 #[no_mangle]
@@ -73,6 +65,8 @@ pub extern "C" fn kmain(info: &BootInfo) -> ! {
         dtables::lidt(&idt_ptr);
         irq::enable();
     }
+
+    let mm = unsafe { MemoryManager::new(info) };
 
     println!("boot info: {:#?}", info);
     let boot_info = unsafe { multiboot2::load(info.mb2_boot_info.into()).unwrap() };
