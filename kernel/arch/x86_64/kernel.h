@@ -4,7 +4,7 @@
 #include <arch/x86_64/control_register.h>
 
 // START macros must have the same value in the kernel linker script
-#define KERNEL_PHYSICAL_START 0x0000000000400000
+#define KERNEL_PHYSICAL_START 0x0000000000200000
 #define KERNEL_HIGHER_HALF   0xFFFF800000000000
 #define KERNEL_VIRTUAL_START  (KERNEL_HIGHER_HALF | KERNEL_PHYSICAL_START)
 

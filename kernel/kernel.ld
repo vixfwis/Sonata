@@ -2,7 +2,7 @@ ENTRY(_start)
 
 SECTIONS
 {
-  . = 4M;
+  . = 2M;
 
   .boottext :
     {

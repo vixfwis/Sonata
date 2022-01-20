@@ -91,11 +91,11 @@ _start:
         // end / 2Mb + 1 = 3 pages
         // identity mapping 3 pages, 2MiB each, from 0 to 0x600000
         mov $0, %ecx
-        // todo: multiboot2 boot info might not be mapped
         // if it's on page boundary or if bootloader puts it not right after kernel
         movl $kernel_physical_end, %esi
         shrl $TWO_MEGABYTES_SHIFT, %esi
-        addl $1, %esi
+        // lazy hack for mb2; identity map lots of space \ o /
+        addl $8, %esi
 
 page_directory_table_loop:
         movl $TWO_MEGABYTES, %eax
