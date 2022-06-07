@@ -51,8 +51,8 @@ SECTIONS
 
   .bss : AT ( (LOADADDR (.data) + SIZEOF (.data) + 0xFFF) & 0xFFFFFFFFFFFFF000 )
   {
-    *(COMMON)
     *(.bss)
+    *(COMMON)
   }
 
   . = ALIGN(0x1000);

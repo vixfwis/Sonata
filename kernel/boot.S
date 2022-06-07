@@ -29,14 +29,6 @@ header_end:
 
 .code32
 
-.section .bss
-.comm pml4, PML4_SIZE, PML4_ALIGNMENT
-.comm low_pdpt, PDPT_SIZE, PDPT_ALIGNMENT
-.comm high_pdpt, PDPT_SIZE, PDPT_ALIGNMENT
-.comm low_page_directory_table, PAGE_DIRECTORY_SIZE, PAGE_DIRECTORY_ALIGNMENT
-.comm high_page_directory_table, PAGE_DIRECTORY_SIZE, PAGE_DIRECTORY_ALIGNMENT
-.comm kstack, KERNEL_BOOT_STACK_SIZE, KERNEL_BOOT_STACK_ALIGNMENT
-
 .data
 .align GDT_TABLE_ALIGNMENT
 gdt_table:
@@ -47,19 +39,31 @@ gdt_table_end:
         .skip (GDT_TABLE_SIZE - (gdt_table_end - gdt_table))
 
 gdt_ptr:
-         .short GDT_TABLE_SIZE - 1
-         .long gdt_table
+        .short GDT_TABLE_SIZE - 1
+        .long gdt_table
 
 // pass this structure to kmain so memory manager
 // can take over without overwriting itself
+.align 0x10
 boot_info:
-        // write multiboot2 boot info at runtime
-        .quad 0
-        // stack must be linked right before x64 .text, see kernel.ld
+        .quad 0         // will write multiboot2 boot info here at runtime
+        .quad gdt_table
         .quad kstack
         .quad kernel_physical_end
         .quad kstack + KERNEL_HIGHER_HALF
         .quad kernel_virtual_end
+
+.section .bss
+// level 4 paging
+.comm pml4, PML4_SIZE, PML4_ALIGNMENT
+// level 3 paging for low and high memory
+.comm low_pdpt, PDPT_SIZE, PDPT_ALIGNMENT
+.comm high_pdpt, PDPT_SIZE, PDPT_ALIGNMENT
+// level 2 paging for low and high memory
+// we're using 2M pages in bootstrap code, so no level 1 paging
+.comm low_page_directory_table, PAGE_DIRECTORY_SIZE, PAGE_DIRECTORY_ALIGNMENT
+.comm high_page_directory_table, PAGE_DIRECTORY_SIZE, PAGE_DIRECTORY_ALIGNMENT
+.comm kstack, KERNEL_BOOT_STACK_SIZE, KERNEL_BOOT_STACK_ALIGNMENT
 
 .section .text
 .global _start
@@ -86,16 +90,9 @@ _start:
         or $(MMU_PRESENT | MMU_WRITABLE), %eax
         movl %eax, high_pdpt + (PDPT_ADDR_TO_ENTRY_INDEX(KERNEL_VIRTUAL_START) * PDPT_ENTRY_SIZE)
 
-        // i.e:
-        // end = 0x4DF000
-        // end / 2Mb + 1 = 3 pages
-        // identity mapping 3 pages, 2MiB each, from 0 to 0x600000
+        // map whole table: 512 records, 2MiB each, 2GiB total
         mov $0, %ecx
-        // if it's on page boundary or if bootloader puts it not right after kernel
-        movl $kernel_physical_end, %esi
-        shrl $TWO_MEGABYTES_SHIFT, %esi
-        // lazy hack for mb2; identity map lots of space \ o /
-        addl $8, %esi
+        mov $512, %esi
 
 page_directory_table_loop:
         movl $TWO_MEGABYTES, %eax
@@ -149,6 +146,12 @@ _start64:
         movl %eax, kstack
         movabs kstack, %rax
         movq %rax, %rsp
+        // clear stack
+        movq %rax, %rdi
+        subq $0x4000, %rdi
+        movq $0, %rax
+        movl $0x800, %ecx
+        rep stosq
         // clear screen
         movl $0xB8000, %edi
         movq $0x0F200F200F200F20, %rax

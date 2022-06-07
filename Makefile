@@ -1,12 +1,5 @@
 ISO_FILE=sonata.iso
 
-.PHONY: all
-.PHONY: kernel
-.PHONY: sonata_os
-.PHONY: qemu
-.PHONY: iso
-.PHONY: clean
-
 ifneq (, $(shell which grub2-mkrescue 2> /dev/null))
   GRUB_MKRESCUE = grub2-mkrescue
 else ifneq (, $(shell which grub-mkrescue 2> /dev/null))
@@ -26,6 +19,12 @@ sonata_os:
 qemu: $(ISO_FILE)
 	qemu-system-x86_64 -cdrom $(ISO_FILE) -m 1024M -s
 
+qemu-gdb: $(ISO_FILE)
+	qemu-system-x86_64 -cdrom $(ISO_FILE) -m 1024M -s -S
+
+gdb:
+	gdb -ex 'target remote localhost:1234' -ex 'file kernel/kernel'
+
 clean:
 	make -C kernel clean
 	rm -rf iso
@@ -38,3 +37,5 @@ $(ISO_FILE): kernel
 	cp grub.cfg iso/boot/grub/
 	cp kernel/kernel iso/boot/
 	$(GRUB_MKRESCUE) -o $(ISO_FILE) iso
+
+.PHONY: all kernel sonata_os qemu qemu-gdb iso clean gdb
