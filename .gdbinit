@@ -1,6 +1,7 @@
 # __________________gdb options_________________
 
 set $64BITS = 1
+set print pretty on
 set language rust
 set confirm off
 set verbose off
@@ -914,20 +915,38 @@ end
 # _______________process control______________
 define n
     if $argc == 0
-        nexti
+        next
     end
     if $argc == 1
-        nexti $arg0
+        next $arg0
     end
     if $argc > 1
         help n
     end
 end
 document n
+Step one line, but proceed through subroutine calls.
+If NUM is given, then repeat it NUM times or till program stops.
+This is alias for next
+Usage: n <NUM>
+end
+
+define ni
+    if $argc == 0
+        nexti
+    end
+    if $argc == 1
+        nexti $arg0
+    end
+    if $argc > 1
+        help ni
+    end
+end
+document ni
 Step one instruction, but proceed through subroutine calls.
 If NUM is given, then repeat it NUM times or till program stops.
-This is alias for nexti.
-Usage: n <NUM>
+This is alias for nexti
+Usage: ni <NUM>
 end
 
 

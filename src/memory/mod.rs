@@ -104,5 +104,5 @@ pub unsafe fn init_memory(info: *mut BootInfo) {
     }
 
     // risky call of the day
-    // x86::controlregs::cr3_write(pml4_pa.into());
+    x86::controlregs::cr3_write(pml4_pa.into());
 }

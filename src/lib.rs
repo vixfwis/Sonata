@@ -31,7 +31,7 @@ fn panic(info: &PanicInfo) -> ! {
     // if something goes wrong. instead just pick a place and print panic info
     unsafe {
         irq::disable();
-        let mut writer = VGAWriter::new(unsafe { &mut *((0xb8000 + 80 * 20) as *mut VGABuffer) },
+        let mut writer = VGAWriter::new(unsafe { &mut *((0xFFFF8000000B8000u64 + 80 * 20) as *mut VGABuffer) },
                                         VGAColorCode::new(VGAColor::White, VGAColor::Black));
         writer.write_fmt(format_args!("{}", info)).unwrap();
         loop {
