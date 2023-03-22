@@ -7,7 +7,6 @@ use paging::{PAddr, PML4, PML4Entry, pml4_index, PML4Flags, VAddr, PML4_SLOT_SIZ
 use x86::bits32::paging::BASE_PAGE_SIZE;
 use x86::bits64::paging::{LARGE_PAGE_SIZE, PD, PDEntry, PDFlags, PDPT, pdpt_index, PDPTEntry, PDPTFlags};
 use x86::dtables::DescriptorTablePointer;
-use crate::println;
 pub mod vmm;
 pub mod pmm;
 mod heap;
@@ -61,11 +60,6 @@ pub unsafe fn init_memory(info: *mut BootInfo) {
     // move MB2 header to fixed location
     relocate_mb2_at_addr(info, (*info).kv_end);
     let boot_info = multiboot2::load((*info).mb2.into()).unwrap();
-    // println!("boot info: {:#?}", *info);
-    // println!("boot info size: {:#08x}", boot_info.total_size());
-    // for mem in boot_info.memory_map_tag().unwrap().memory_areas() {
-    //     println!("addr: {:#08x}, len: {:#08x}, type: {:?}", mem.start_address(), mem.size(), mem.typ());
-    // }
     let pml4_pa = PAddr(0x100000);
     let pdpt_pa = PAddr(0x101000);
     let pd_pa = PAddr(0x102000);
@@ -103,6 +97,5 @@ pub unsafe fn init_memory(info: *mut BootInfo) {
         )
     }
 
-    // risky call of the day
     x86::controlregs::cr3_write(pml4_pa.into());
 }

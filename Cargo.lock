@@ -3,16 +3,10 @@
 version = 3
 
 [[package]]
-name = "autocfg"
-version = "1.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d468802bab17cbc0cc575e9b053f41e72aa36bfa6b7f55e3529ffa43161b97fa"
-
-[[package]]
 name = "bit_field"
-version = "0.10.1"
+version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dcb6dd1c2376d2e096796e234a70e17e94cc2d5d54ff8ce42b28cef1d0d359a4"
+checksum = "dc827186963e592360843fb5ba4b973e145841266c1357f7180c43526f2e5b61"
 
 [[package]]
 name = "bitflags"
@@ -21,78 +15,99 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bef38d45163c2f1dde094a7dfd33ccf595c92905c8f8f4fdc18d06fb1037718a"
 
 [[package]]
-name = "lazy_static"
-version = "1.4.0"
+name = "cfg-if"
+version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
+checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
+
+[[package]]
+name = "derive_more"
+version = "0.99.17"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4fb810d30a7c1953f91334de7244731fc3f3c10d7fe163338a35b9f640960321"
 dependencies = [
- "spin 0.5.2",
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
-name = "lock_api"
-version = "0.4.7"
+name = "log"
+version = "0.4.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "327fa5b6a6940e4699ec49a9beae1ea4845c6bab9314e4f84ac68742139d8c53"
+checksum = "abb12e687cfb44aa40f41fc3978ef76448f9b6038cad6aef4259d3c095a2382e"
 dependencies = [
- "autocfg",
- "scopeguard",
+ "cfg-if",
 ]
 
 [[package]]
 name = "multiboot2"
-version = "0.13.2"
+version = "0.15.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f72769c72713ab539cb3b8e5079665f7eb06e3dae635cdd32410cce26d58e66d"
+checksum = "0eb029116f6457bdd31bfff8fa02e17e30ac15b12b861ff03e8a878527beb524"
 dependencies = [
  "bitflags",
+ "derive_more",
+ "log",
+]
+
+[[package]]
+name = "proc-macro2"
+version = "1.0.53"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ba466839c78239c09faf015484e5cc04860f88242cff4d03eb038f04b4699b73"
+dependencies = [
+ "unicode-ident",
+]
+
+[[package]]
+name = "quote"
+version = "1.0.26"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4424af4bf778aae2051a77b60283332f386554255d722233d09fbfc7e30da2fc"
+dependencies = [
+ "proc-macro2",
 ]
 
 [[package]]
 name = "raw-cpuid"
-version = "10.3.0"
+version = "10.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "738bc47119e3eeccc7e94c4a506901aea5e7b4944ecd0829cbebf4af04ceda12"
+checksum = "6c297679cb867470fa8c9f67dbba74a78d78e3e98d7cf2b08d6d71540f797332"
 dependencies = [
  "bitflags",
 ]
-
-[[package]]
-name = "scopeguard"
-version = "1.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d29ab0c6d3fc0ee92fe66e2d99f700eab17a8d57d1c1d3b748380fb20baa78cd"
 
 [[package]]
 name = "sonata"
 version = "0.1.0"
 dependencies = [
- "lazy_static",
  "multiboot2",
- "spin 0.9.3",
  "x86",
 ]
 
 [[package]]
-name = "spin"
-version = "0.5.2"
+name = "syn"
+version = "1.0.109"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6e63cff320ae2c57904679ba7cb63280a3dc4613885beafb148ee7bf9aa9042d"
-
-[[package]]
-name = "spin"
-version = "0.9.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c530c2b0d0bf8b69304b39fe2001993e267461948b890cd037d8ad4293fa1a0d"
+checksum = "72b64191b275b66ffe2469e8af2c1cfe3bafa67b529ead792a6d0160888b4237"
 dependencies = [
- "lock_api",
+ "proc-macro2",
+ "quote",
+ "unicode-ident",
 ]
 
 [[package]]
-name = "x86"
-version = "0.48.0"
+name = "unicode-ident"
+version = "1.0.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1af891e1d20843ec044591266212bb7db80f88017030c57ccea76852b49ecae3"
+checksum = "e5464a87b239f13a63a501f2701565754bae92d243d4bb7eb12f6d57d2269bf4"
+
+[[package]]
+name = "x86"
+version = "0.52.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2781db97787217ad2a2845c396a5efe286f87467a5810836db6d74926e94a385"
 dependencies = [
  "bit_field",
  "bitflags",
